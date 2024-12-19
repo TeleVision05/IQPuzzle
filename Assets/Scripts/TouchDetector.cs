@@ -248,24 +248,29 @@ public class TouchDetector : MonoBehaviour
 
             if (Physics.Raycast(ray, out hit))
             {
-                if (hit.transform.gameObject.GetComponentInParent<Rigidbody>().gameObject.CompareTag(draggingTag))
+                if (hit.transform.gameObject.CompareTag(draggingTag))
                 {
                     if (toDrag)
                     {
                         toDrag.gameObject.GetComponent<PieceScript>().Unhighlight();
+                        toDrag = null;
                     }
-                    toDrag = hit.transform.gameObject.GetComponentInParent<Rigidbody>().gameObject.transform;
-                    previousPosition = toDrag.position;
-                    toDragRigidbody = toDrag.GetComponent<Rigidbody>();
+                    else
+                    {
+                        toDrag = hit.transform.gameObject.GetComponentInParent<Rigidbody>().gameObject.transform;
+                        previousPosition = toDrag.position;
+                        toDragRigidbody = toDrag.GetComponent<Rigidbody>();
 
-                    dis = cam.WorldToScreenPoint(previousPosition);
-                    posX = Input.mousePosition.x - dis.x;
-                    posY = Input.mousePosition.y - dis.y;
+                        dis = cam.WorldToScreenPoint(previousPosition);
+                        posX = Input.mousePosition.x - dis.x;
+                        posY = Input.mousePosition.y - dis.y;
 
-                    SetDraggingProperties(toDragRigidbody);
+                        SetDraggingProperties(toDragRigidbody);
 
-                    touched = true;
-                    toDrag.gameObject.GetComponent<PieceScript>().Highlight();
+                        touched = true;
+                        toDrag.gameObject.GetComponent<PieceScript>().Highlight();
+                    }
+                    
                 }
                 else
                 {
