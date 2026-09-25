@@ -26,7 +26,6 @@ public class PieceScript : MonoBehaviour
         transform.position = RoundPosition(transform.position);
         currentRot = RoundRotation(currentRot);
         transform.rotation = Quaternion.Euler(currentRot);
-        isHighlighted = false;
     }
 
     private void LateUpdate()

@@ -53,7 +53,10 @@ public class FinishChecker : MonoBehaviour
             List<int> levelsFinished = finishedLevelsClass.levelsFinished;
 
             int currentLevel = PlayerPrefs.GetInt("currentLevel");
-            levelsFinished.Add(currentLevel);
+            if (!levelsFinished.Contains(currentLevel))
+            {
+                levelsFinished.Add(currentLevel);
+            }
 
             Debug.Log(JsonUtility.ToJson(finishedLevelsClass));
 

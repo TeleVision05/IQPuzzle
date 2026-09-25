@@ -212,8 +212,6 @@ public class TouchDetector : MonoBehaviour
     //}
 
 
-
-
     public string draggingTag;
     public Camera cam;
 
@@ -230,83 +228,126 @@ public class TouchDetector : MonoBehaviour
 
     private void Start()
     {
-        
+        if (cam == null)
+        {
+            cam = Camera.main;
+        }
     }
 
-
-    void FixedUpdate()
+    // Input is polled per rendered frame, so it must be read in Update (FixedUpdate can miss clicks).
+    void Update()
     {
-        
-        //Touch touch = Input.touches[0];
-        
         Vector3 pos = Input.mousePosition;
 
         if (Input.GetMouseButtonDown(0))
         {
-            RaycastHit hit;
-            Ray ray = cam.ScreenPointToRay(pos);
-
-            if (Physics.Raycast(ray, out hit))
-            {
-                if (hit.transform.gameObject.GetComponentInParent<Rigidbody>().gameObject.CompareTag(draggingTag))
-                {
-                    if (toDrag)
-                    {
-                        toDrag.gameObject.GetComponent<PieceScript>().Unhighlight();
-                    }
-                    toDrag = hit.transform.gameObject.GetComponentInParent<Rigidbody>().gameObject.transform;
-                    previousPosition = toDrag.position;
-                    toDragRigidbody = toDrag.GetComponent<Rigidbody>();
-
-                    dis = cam.WorldToScreenPoint(previousPosition);
-                    posX = Input.mousePosition.x - dis.x;
-                    posY = Input.mousePosition.y - dis.y;
-
-                    SetDraggingProperties(toDragRigidbody);
-
-                    touched = true;
-                    toDrag.gameObject.GetComponent<PieceScript>().Highlight();
-                }
-                else
-                {
-                    toDrag.gameObject.GetComponent<PieceScript>().Unhighlight();
-                }
-
-            }
-
+            HandlePress(pos);
         }
 
-        if (touched && Input.mouseScrollDelta.magnitude > 0)
+        if (touched && toDrag != null && Input.GetMouseButton(0))
         {
-            if (toDrag.gameObject.GetComponent<PieceScript>().draggable)
-            {
-                dragging = true;
-
-                float posXNow = Input.mousePosition.x - posX;
-                float posYNow = Input.mousePosition.y - posY;
-                Vector3 curPos = new Vector3(posXNow, posYNow, dis.z);
-
-                Vector3 worldPos = cam.ScreenToWorldPoint(curPos);
-                worldPos = new Vector3(worldPos.x, 5.4f, worldPos.z);
-
-                //toDragRigidbody.velocity = worldPos / (Time.deltaTime * 10);
-                toDrag.position = worldPos;
-
-
-                previousPosition = toDrag.position;
-            }
+            DragSelected();
         }
 
-        if (dragging && Input.GetMouseButtonUp(0))
+        if (Input.GetMouseButtonUp(0))
         {
             dragging = false;
             touched = false;
-            previousPosition = new Vector3(0.0f, 0.0f, 0.0f);
-            SetFreeProperties(toDragRigidbody);
+            previousPosition = Vector3.zero;
+            if (toDragRigidbody)
+            {
+                SetFreeProperties(toDragRigidbody);
+            }
+        }
+    }
+
+    private void HandlePress(Vector3 pos)
+    {
+        RaycastHit hit;
+        Ray ray = cam.ScreenPointToRay(pos);
+
+        if (!Physics.Raycast(ray, out hit))
+        {
+            return;
         }
 
+        Rigidbody hitBody = hit.transform.GetComponentInParent<Rigidbody>();
+        bool isPiece = hit.transform.CompareTag(draggingTag) || (hitBody != null && hitBody.CompareTag(draggingTag));
 
+        if (!isPiece || hitBody == null)
+        {
+            Deselect();
+            return;
+        }
 
+        if (toDrag == hitBody.transform)
+        {
+            // Clicking the selected piece again toggles the selection off.
+            Deselect();
+            return;
+        }
+
+        Deselect();
+        toDrag = hitBody.transform;
+        previousPosition = toDrag.position;
+        toDragRigidbody = hitBody;
+
+        dis = cam.WorldToScreenPoint(previousPosition);
+        posX = pos.x - dis.x;
+        posY = pos.y - dis.y;
+
+        SetDraggingProperties(toDragRigidbody);
+
+        touched = true;
+        PieceScript selected = PieceOf(toDrag);
+        if (selected != null)
+        {
+            selected.Highlight();
+        }
+    }
+
+    private void DragSelected()
+    {
+        PieceScript piece = PieceOf(toDrag);
+        if (piece == null || !piece.draggable)
+        {
+            return;
+        }
+
+        dragging = true;
+
+        float posXNow = Input.mousePosition.x - posX;
+        float posYNow = Input.mousePosition.y - posY;
+        Vector3 curPos = new Vector3(posXNow, posYNow, dis.z);
+
+        Vector3 worldPos = cam.ScreenToWorldPoint(curPos);
+        toDrag.position = new Vector3(worldPos.x, 5.4f, worldPos.z);
+        previousPosition = toDrag.position;
+    }
+
+    private void Deselect()
+    {
+        if (toDrag != null)
+        {
+            PieceScript previous = PieceOf(toDrag);
+            if (previous != null)
+            {
+                previous.Unhighlight();
+            }
+        }
+        if (toDragRigidbody)
+        {
+            SetFreeProperties(toDragRigidbody);
+        }
+        toDrag = null;
+        toDragRigidbody = null;
+        touched = false;
+        dragging = false;
+    }
+
+    private static PieceScript PieceOf(Transform t)
+    {
+        return t != null ? t.GetComponent<PieceScript>() : null;
     }
 
     private void SetDraggingProperties(Rigidbody rb)
@@ -321,17 +362,19 @@ public class TouchDetector : MonoBehaviour
 
     public void Rotate()
     {
-        if (toDrag.gameObject.GetComponent<PieceScript>().isHighlighted)
+        PieceScript piece = PieceOf(toDrag);
+        if (piece != null && piece.isHighlighted)
         {
-            toDrag.gameObject.GetComponent<PieceScript>().Rotate();
+            piece.Rotate();
         }
     }
 
     public void Flip()
     {
-        if (toDrag.gameObject.GetComponent<PieceScript>().isHighlighted)
+        PieceScript piece = PieceOf(toDrag);
+        if (piece != null && piece.isHighlighted)
         {
-            toDrag.gameObject.GetComponent<PieceScript>().Flip();
+            piece.Flip();
         }
     }
 }

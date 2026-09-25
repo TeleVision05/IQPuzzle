@@ -28,7 +28,7 @@ public class Main : MonoBehaviour
         Levels inst = Levels.Instance;
         int currentLevel = PlayerPrefs.GetInt("currentLevel") - 1;
 
-        for (int i = 0; i < inst.posx.Count; i++)
+        for (int i = 0; i < inst.posx[currentLevel].Count && i < pieces.transform.childCount; i++)
         {
             if (Mathf.Abs(inst.posx[currentLevel][i]) >= 10)
             {
